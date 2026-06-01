@@ -8,12 +8,40 @@ const Schedule = () => {
   const { scheduleNewPickup } = useMobile();
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
-  const [wasteType, setWasteType] = useState('General Waste');
+  const [wasteType, setWasteType] = useState('Household Waste');
+  const [weight, setWeight] = useState('');
+  const [price, setPrice] = useState(0);
+
+  // Pricing per kg for each waste type
+  const pricingRules = {
+    'Household Waste': 2.50,
+    'Bulky Waste': 5.00,
+    'Recyclable Waste': 1.50,
+    'Electronic Waste': 10.00
+  };
+
+  const calculatePrice = (w, type) => {
+    const kg = parseFloat(w) || 0;
+    const pricePerKg = pricingRules[type] || 2.50;
+    return (kg * pricePerKg).toFixed(2);
+  };
+
+  const handleWeightChange = (e) => {
+    const w = e.target.value;
+    setWeight(w);
+    setPrice(calculatePrice(w, wasteType));
+  };
+
+  const handleWasteTypeChange = (e) => {
+    const type = e.target.value;
+    setWasteType(type);
+    setPrice(calculatePrice(weight, type));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!date || !time) return;
-    scheduleNewPickup(date, time, wasteType);
+    if (!date || !time || !weight) return;
+    scheduleNewPickup(date, time, wasteType, parseFloat(weight), parseFloat(price));
     navigate('/dashboard');
   };
 
@@ -58,7 +86,7 @@ const Schedule = () => {
             <select
               id="wasteType"
               value={wasteType}
-              onChange={(e) => setWasteType(e.target.value)}
+              onChange={handleWasteTypeChange}
               className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300"
             >
               <option>Household Waste</option>
@@ -66,6 +94,31 @@ const Schedule = () => {
               <option>Recyclable Waste</option>
               <option>Electronic Waste</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1" htmlFor="weight">
+              Weight (kg)
+            </label>
+            <input
+              id="weight"
+              type="number"
+              step="0.1"
+              min="0.1"
+              required
+              value={weight}
+              onChange={handleWeightChange}
+              placeholder="Enter weight in kilograms"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+            />
+          </div>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-slate-600">Estimated Price:</span>
+              <span className="text-xl font-bold text-emerald-600">${price}</span>
+            </div>
+            <div className="text-xs text-slate-500 mt-2">
+              {pricingRules[wasteType] ? `$${pricingRules[wasteType]}/kg` : 'Rate pending'}
+            </div>
           </div>
           <button
             type="submit"

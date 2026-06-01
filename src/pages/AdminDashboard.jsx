@@ -6,7 +6,7 @@ import {
   Clock, TrendingUp, Trash2, RefreshCw
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://eco-friend-api.onrender.com';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://eco-friend-api.vercel.app';
 
 const AdminDashboard = () => {
   const { user, logoutUser } = useMobile();

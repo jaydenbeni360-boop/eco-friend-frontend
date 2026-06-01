@@ -5,7 +5,7 @@ const MobileContext = createContext();
 
 export const useMobile = () => useContext(MobileContext);
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://eco-friend-api.onrender.com';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://eco-friend-api.vercel.app';
 
 export const MobileProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -194,13 +194,13 @@ export const MobileProvider = ({ children }) => {
   };
 
   // ─── SCHEDULE ────────────────────────────────────────────────────────────────
-  const scheduleNewPickup = async (date, time, wasteType) => {
+  const scheduleNewPickup = async (date, time, wasteType, weight = 1.0, price = 0) => {
     try {
       const token = localStorage.getItem('eco_token');
       const res = await fetch(`${API_BASE}/api/schedules`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ date, time, waste_type: wasteType, address: 'User provided address' })
+        body: JSON.stringify({ date, time, waste_type: wasteType, weight, price, address: 'User provided address' })
       });
       const data = await res.json();
       if (!res.ok) return { success: false, message: data.message };
@@ -211,18 +211,18 @@ export const MobileProvider = ({ children }) => {
       addNotification({
         id: Date.now(),
         title: 'Pickup Scheduled!',
-        message: `Waste collection confirmed for ${date} at ${time}.`,
+        message: `Scheduled ${weight}kg of ${wasteType} for ${date} at ${time}. Total: $${price}`,
         type: 'success'
       });
       return { success: true };
     } catch {
       // Fallback update in case API is temporarily offline
-      const newSlot = { date, time, type: `${wasteType} Pickup`, status: 'Upcoming' };
+      const newSlot = { date, time, type: `${wasteType} Pickup`, status: 'Upcoming', weight, price };
       setScheduledSlots(prev => [newSlot, ...prev]);
       addNotification({
         id: Date.now(),
         title: 'Pickup Scheduled!',
-        message: `Waste collection confirmed for ${date} at ${time}.`,
+        message: `Scheduled ${weight}kg of ${wasteType} for ${date} at ${time}. Total: $${price}`,
         type: 'success'
       });
       return { success: true };
