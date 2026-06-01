@@ -11,6 +11,10 @@ const Schedule = () => {
   const [wasteType, setWasteType] = useState('Household Waste');
   const [weight, setWeight] = useState('');
   const [price, setPrice] = useState(0);
+  const [streetNumber, setStreetNumber] = useState('');
+  const [gateNumber, setGateNumber] = useState('');
+  const [apartment, setApartment] = useState('');
+  const [landmark, setLandmark] = useState('');
 
   // Pricing per kg for each waste type
   const pricingRules = {
@@ -40,8 +44,9 @@ const Schedule = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!date || !time || !weight) return;
-    scheduleNewPickup(date, time, wasteType, parseFloat(weight), parseFloat(price));
+    if (!date || !time || !weight || !streetNumber || !gateNumber) return;
+    const address = `Street ${streetNumber}, Gate ${gateNumber}${apartment ? `, ${apartment}` : ''}${landmark ? ` (Near ${landmark})` : ''}`;
+    scheduleNewPickup(date, time, wasteType, parseFloat(weight), parseFloat(price), address);
     navigate('/dashboard');
   };
 
@@ -118,6 +123,67 @@ const Schedule = () => {
             </div>
             <div className="text-xs text-slate-500 mt-2">
               {pricingRules[wasteType] ? `$${pricingRules[wasteType]}/kg` : 'Rate pending'}
+            </div>
+          </div>
+          <div className="border-t-2 border-slate-100 pt-4">
+            <h3 className="text-sm font-bold text-slate-700 mb-3">Delivery Location</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor="streetNumber">
+                  Street Number *
+                </label>
+                <input
+                  id="streetNumber"
+                  type="text"
+                  required
+                  value={streetNumber}
+                  onChange={(e) => setStreetNumber(e.target.value)}
+                  placeholder="e.g., 123"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor="gateNumber">
+                  Gate Number *
+                </label>
+                <input
+                  id="gateNumber"
+                  type="text"
+                  required
+                  value={gateNumber}
+                  onChange={(e) => setGateNumber(e.target.value)}
+                  placeholder="e.g., A1"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor="apartment">
+                  Apartment/Unit
+                </label>
+                <input
+                  id="apartment"
+                  type="text"
+                  value={apartment}
+                  onChange={(e) => setApartment(e.target.value)}
+                  placeholder="Optional"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor="landmark">
+                  Landmark
+                </label>
+                <input
+                  id="landmark"
+                  type="text"
+                  value={landmark}
+                  onChange={(e) => setLandmark(e.target.value)}
+                  placeholder="Optional"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                />
+              </div>
             </div>
           </div>
           <button

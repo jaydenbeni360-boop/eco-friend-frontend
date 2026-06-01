@@ -194,13 +194,13 @@ export const MobileProvider = ({ children }) => {
   };
 
   // ─── SCHEDULE ────────────────────────────────────────────────────────────────
-  const scheduleNewPickup = async (date, time, wasteType, weight = 1.0, price = 0) => {
+  const scheduleNewPickup = async (date, time, wasteType, weight = 1.0, price = 0, address = '') => {
     try {
       const token = localStorage.getItem('eco_token');
       const res = await fetch(`${API_BASE}/api/schedules`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ date, time, waste_type: wasteType, weight, price, address: 'User provided address' })
+        body: JSON.stringify({ date, time, waste_type: wasteType, weight, price, address })
       });
       const data = await res.json();
       if (!res.ok) return { success: false, message: data.message };
@@ -217,7 +217,7 @@ export const MobileProvider = ({ children }) => {
       return { success: true };
     } catch {
       // Fallback update in case API is temporarily offline
-      const newSlot = { date, time, type: `${wasteType} Pickup`, status: 'Upcoming', weight, price };
+      const newSlot = { date, time, type: `${wasteType} Pickup`, status: 'Upcoming', weight, price, address };
       setScheduledSlots(prev => [newSlot, ...prev]);
       addNotification({
         id: Date.now(),
