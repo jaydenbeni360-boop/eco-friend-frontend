@@ -48,12 +48,22 @@ const MapComponent = () => {
   const geocodeAddress = (address) => new Promise((resolve, reject) => {
     if (!window.google) return resolve(null);
     const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ address }, (results, status) => {
+    // Prefer results in Rwanda using componentRestrictions; also allow fallback
+    const req = { address, componentRestrictions: { country: 'RW' } };
+    geocoder.geocode(req, (results, status) => {
       if (status === 'OK' && results && results[0]) {
         const loc = results[0].geometry.location;
         resolve({ lat: loc.lat(), lng: loc.lng() });
       } else {
-        resolve(null);
+        // fallback: try appending 'Rwanda' to bias results
+        geocoder.geocode({ address: `${address}, Rwanda` }, (res2, st2) => {
+          if (st2 === 'OK' && res2 && res2[0]) {
+            const loc = res2[0].geometry.location;
+            resolve({ lat: loc.lat(), lng: loc.lng() });
+          } else {
+            resolve(null);
+          }
+        });
       }
     });
   });
@@ -94,11 +104,21 @@ const MapComponent = () => {
         /* eslint-enable no-await-in-loop */
       }
 
+      if (!position) {
+        // try a second geocode attempt with a Kigali hint
+        position = await geocodeAddress(`${sched.address}, Kigali, Rwanda`);
+      }
+
       if (!position) continue;
 
       // persist coordinates back to backend if schedule doesn't already have them
       if ((!sched.latitude || !sched.longitude) && position) {
-        saveCoords(sched.id, position.lat, position.lng).catch(err => console.warn('Failed to save coords', err));
+        try {
+          await saveCoords(sched.id, position.lat, position.lng);
+          console.log(`Saved coords for schedule ${sched.id}:`, position);
+        } catch (err) {
+          console.warn('Failed to save coords', err);
+        }
       }
 
       const marker = new window.google.maps.Marker({
