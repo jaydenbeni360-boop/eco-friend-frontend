@@ -218,37 +218,28 @@ export const MobileProvider = ({ children }) => {
       // Re-fetch data to sync with backend DB
       await fetchUserData(user);
 
-      // If weight is known, credit points immediately (1 point per kg rounded)
+      // Create a pickup log and credit points immediately (use default weight=1 if unknown)
       try {
-        const numericWeight = weight == null ? null : Number(weight);
-        if (numericWeight) {
-          const earnedPoints = Math.max(1, Math.round(numericWeight));
-          await fetch(`${API_BASE}/api/pickups`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ type: wasteType, weight: numericWeight, points: earnedPoints })
-          });
-          setPoints(prev => prev + earnedPoints);
-          addNotification({
-            id: Date.now(),
-            title: 'Pickup Scheduled!',
-            message: `Scheduled ${numericWeight}kg of ${wasteType} for ${date} at ${time}. You earned +${earnedPoints} points!`,
-            type: 'success'
-          });
-        } else {
-          addNotification({
-            id: Date.now(),
-            title: 'Pickup Scheduled!',
-            message: `Scheduled ${wasteType} for ${date} at ${time}. Admin will confirm weight and price.`,
-            type: 'success'
-          });
-        }
+        const numericWeight = weight == null ? 1 : Number(weight);
+        const earnedPoints = Math.max(1, Math.round(numericWeight));
+        await fetch(`${API_BASE}/api/pickups`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ type: wasteType, weight: numericWeight, points: earnedPoints })
+        });
+        setPoints(prev => prev + earnedPoints);
+        addNotification({
+          id: Date.now(),
+          title: 'Pickup Scheduled!',
+          message: `Scheduled ${numericWeight}kg of ${wasteType} for ${date} at ${time}. You earned +${earnedPoints} points!`,
+          type: 'success'
+        });
       } catch (err) {
         // non-fatal; still notify user
         addNotification({
           id: Date.now(),
           title: 'Pickup Scheduled!',
-          message: `Scheduled ${wasteType} for ${date} at ${time}.`,
+          message: `Scheduled ${wasteType} for ${date} at ${time}. Admin will confirm weight and price.`,
           type: 'success'
         });
       }
