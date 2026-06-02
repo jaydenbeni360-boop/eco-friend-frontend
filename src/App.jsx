@@ -75,8 +75,8 @@ const AppLayout = () => {
         </Routes>
       </main>
 
-      {/* SideDrawer only for non-admin authenticated users */}
-      {user && !user.is_admin && <SideDrawer />}
+      {/* SideDrawer shown for all authenticated users (including admins) */}
+      {user && <SideDrawer />}
     </div>
   );
 };
