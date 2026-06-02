@@ -51,9 +51,13 @@ const Schedule = () => {
     }
 
     // User doesn't supply weight/price anymore — admin will measure and set amount
-    await scheduleNewPickup(date, time, wasteType, null, 0, address, latitude, longitude);
+    const result = await scheduleNewPickup(date, time, wasteType, null, 0, address, latitude, longitude);
     setLocating(false);
-    navigate('/dashboard');
+    if (result && result.success) {
+      navigate('/dashboard');
+    } else {
+      alert(result?.message || 'Failed to schedule pickup. Please try again.');
+    }
   };
 
   return (
