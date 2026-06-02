@@ -106,22 +106,7 @@ const Schedule = () => {
               <option>Electronic Waste</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1" htmlFor="weight">
-              Weight (kg)
-            </label>
-            <input
-              id="weight"
-              type="number"
-              step="0.1"
-              min="0.1"
-              required
-              value={weight}
-              onChange={handleWeightChange}
-              placeholder="Enter weight in kilograms"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
-            />
-          </div>
+          {/* Weight removed from user UI; admin will set weight/price */}
           {/* Price is shown to admin/collectors; hide from user UI */}
           <div className="border-t-2 border-slate-100 pt-4">
             <h3 className="text-sm font-bold text-slate-700 mb-3">Delivery Location</h3>
