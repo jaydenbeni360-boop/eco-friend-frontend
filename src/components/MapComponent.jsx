@@ -96,6 +96,11 @@ const MapComponent = () => {
 
       if (!position) continue;
 
+      // persist coordinates back to backend if schedule doesn't already have them
+      if ((!sched.latitude || !sched.longitude) && position) {
+        saveCoords(sched.id, position.lat, position.lng).catch(err => console.warn('Failed to save coords', err));
+      }
+
       const marker = new window.google.maps.Marker({
         position,
         map: gmMap.current,
@@ -127,6 +132,20 @@ const MapComponent = () => {
 
     if (!bounds.isEmpty) {
       gmMap.current.fitBounds(bounds);
+    }
+  };
+
+  const saveCoords = async (scheduleId, lat, lng) => {
+    try {
+      const token = localStorage.getItem('eco_token');
+      await fetch(`${API_BASE}/api/schedules/${scheduleId}/location`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ latitude: lat, longitude: lng })
+      });
+    } catch (err) {
+      console.error('Save coords error:', err);
+      throw err;
     }
   };
 
