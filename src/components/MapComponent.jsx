@@ -1,96 +1,139 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useMobile } from '../context/MobileContext';
+
+// Use environment key if provided, otherwise fallback to the provided key
+const FALLBACK_GOOGLE_KEY = 'AIzaSyCAP3Mp_XOeqE0VJmOGSrZ903IH1vvBNfQ';
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || FALLBACK_GOOGLE_KEY;
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://eco-friend-api.vercel.app';
 
 const MapComponent = () => {
   const { user } = useMobile();
   const [schedules, setSchedules] = useState([]);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const [map, setMap] = useState(null);
-  const [markers, setMarkers] = useState({});
-
-  const API_BASE = 'https://eco-friend-api.vercel.app';
+  const mapRef = useRef(null);
+  const gmMap = useRef(null);
+  const markersRef = useRef([]);
 
   useEffect(() => {
-    // Load Leaflet CSS and JS dynamically
-    if (!window.L) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
-      document.head.appendChild(link);
-
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
-      script.onload = () => {
-        setMapLoaded(true);
-        initializeMap();
-      };
-      document.head.appendChild(script);
+    if (!window.google) {
+      const s = document.createElement('script');
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+      s.async = true;
+      s.defer = true;
+      s.onload = () => initMap();
+      document.head.appendChild(s);
     } else {
-      setMapLoaded(true);
-      initializeMap();
+      initMap();
     }
+
+    // cleanup
+    return () => {
+      if (markersRef.current.length && markersRef.current.forEach) {
+        markersRef.current.forEach(m => m.setMap(null));
+      }
+      markersRef.current = [];
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const initializeMap = () => {
-    if (!window.L) return;
-    const newMap = window.L.map('mapContainer').setView([0, 0], 2);
-    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(newMap);
-    setMap(newMap);
-    fetchSchedules(newMap);
+  const initMap = () => {
+    if (!mapRef.current || !window.google) return;
+    gmMap.current = new window.google.maps.Map(mapRef.current, {
+      center: { lat: 0, lng: 0 },
+      zoom: 2,
+    });
+    fetchSchedules();
   };
 
-  const fetchSchedules = async (mapInstance) => {
+  const geocodeAddress = (address) => new Promise((resolve, reject) => {
+    if (!window.google) return resolve(null);
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ address }, (results, status) => {
+      if (status === 'OK' && results && results[0]) {
+        const loc = results[0].geometry.location;
+        resolve({ lat: loc.lat(), lng: loc.lng() });
+      } else {
+        resolve(null);
+      }
+    });
+  });
+
+  const fetchSchedules = async () => {
     try {
       const token = localStorage.getItem('eco_token');
       const res = await fetch(`${API_BASE}/api/schedules`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setSchedules(data.schedules || []);
-      addMarkersToMap(data.schedules || [], mapInstance);
+      const list = data.schedules || [];
+      setSchedules(list);
+      placeMarkers(list);
     } catch (err) {
       console.error('Fetch schedules error:', err);
     }
   };
 
-  const addMarkersToMap = (scheduleList, mapInstance) => {
-    if (!mapInstance || !window.L) return;
+  const placeMarkers = async (list) => {
+    if (!window.google || !gmMap.current) return;
+    // clear old markers
+    markersRef.current.forEach(m => m.setMap(null));
+    markersRef.current = [];
+    const bounds = new window.google.maps.LatLngBounds();
 
-    // Clear existing markers
-    Object.values(markers).forEach(marker => marker.remove());
-    const newMarkers = {};
-
-    // Add markers for each schedule with valid address
-    scheduleList.forEach((schedule) => {
-      if (schedule.address) {
-        // Geocode the address (using a simple simulation for now)
-        const marker = window.L.marker([0, 0]).addTo(mapInstance);
-        marker.bindPopup(`
-          <div style="font-size: 12px;">
-            <strong>${schedule.user_name}</strong><br/>
-            ${schedule.user_email}<br/>
-            ${schedule.user_phone || 'N/A'}<br/>
-            <strong>Address:</strong> ${schedule.address}<br/>
-            <strong>Weight:</strong> ${schedule.weight} kg<br/>
-            <strong>Price:</strong> $${schedule.price || 0}<br/>
-            <strong>Status:</strong> ${schedule.status}
-          </div>
-        `);
-        newMarkers[schedule.id] = marker;
+    for (const sched of list) {
+      if (!sched.address) continue;
+      // If lat/lng available on schedule, use it; otherwise geocode
+      let position = null;
+      if (sched.latitude && sched.longitude) {
+        position = { lat: Number(sched.latitude), lng: Number(sched.longitude) };
+      } else {
+        // geocode address
+        // throttle minimal delay to avoid quick burst
+        /* eslint-disable no-await-in-loop */
+        position = await geocodeAddress(sched.address);
+        /* eslint-enable no-await-in-loop */
       }
-    });
 
-    setMarkers(newMarkers);
+      if (!position) continue;
+
+      const marker = new window.google.maps.Marker({
+        position,
+        map: gmMap.current,
+        title: sched.user_name || sched.user_email || 'Booking',
+      });
+
+      const infoHtml = `
+        <div style="font-size:13px; line-height:1.25; max-width:260px;">
+          <strong>${sched.user_name || '—'}</strong><br/>
+          ${sched.user_email || '—'}<br/>
+          📱 ${sched.user_phone || '—'}<br/>
+          <div style="margin-top:6px;"><strong>Address:</strong> ${sched.address || '—'}</div>
+          <div><strong>Weight:</strong> ${sched.weight || '—'} kg</div>
+          <div><strong>Price:</strong> $${sched.price || '0.00'}</div>
+          <div><strong>Payment:</strong> ${sched.payment_status || 'none'}</div>
+          <div style="margin-top:6px;"><em>Schedule ID: ${sched.id}</em></div>
+        </div>
+      `;
+
+      const infowindow = new window.google.maps.InfoWindow({ content: infoHtml });
+      marker.addListener('click', () => {
+        infowindow.open({ anchor: marker, map: gmMap.current, shouldFocus: false });
+        setSelectedSchedule(sched);
+      });
+
+      markersRef.current.push(marker);
+      bounds.extend(position);
+    }
+
+    if (!bounds.isEmpty) {
+      gmMap.current.fitBounds(bounds);
+    }
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.mapSection}>
-        <div id="mapContainer" style={styles.map} />
+        <div id="mapContainer" ref={mapRef} style={styles.map} />
       </div>
       <div style={styles.detailsSection}>
         <h3 style={styles.detailsTitle}>📍 Booking Details</h3>
@@ -102,7 +145,14 @@ const MapComponent = () => {
                 ...styles.scheduleItem,
                 backgroundColor: selectedSchedule?.id === sched.id ? '#d1fae5' : '#f0fdf4',
               }}
-              onClick={() => setSelectedSchedule(sched)}
+              onClick={() => {
+                setSelectedSchedule(sched);
+                // open marker info window if available
+                const marker = markersRef.current.find(m => m.getTitle() === (sched.user_name || sched.user_email || 'Booking'));
+                if (marker) {
+                  new window.google.maps.event.trigger(marker, 'click');
+                }
+              }}
             >
               <div style={styles.scheduleItemName}>{sched.user_name}</div>
               <div style={styles.scheduleItemText}>{sched.user_email}</div>
@@ -136,6 +186,7 @@ const styles = {
   map: {
     width: '100%',
     height: '100%',
+    minHeight: '420px',
   },
   detailsSection: {
     flex: 1,

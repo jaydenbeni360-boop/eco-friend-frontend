@@ -59,10 +59,20 @@ export const MobileProvider = ({ children }) => {
       if (schedulesRes.ok) {
         const schedules = await schedulesRes.json();
         const formattedSlots = schedules.map(s => ({
+          id: s.id,
           date: new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
           time: s.time.substring(0, 5), // 'HH:MM'
           type: `${s.waste_type} Pickup`,
-          status: s.status
+          waste_type: s.waste_type,
+          weight: s.weight,
+          price: s.price,
+          amount_due: s.amount_due,
+          payment_status: s.payment_status,
+          status: s.status,
+          address: s.address,
+          latitude: s.latitude,
+          longitude: s.longitude,
+          house_number: s.house_number
         }));
         setScheduledSlots(formattedSlots);
       }
@@ -194,13 +204,13 @@ export const MobileProvider = ({ children }) => {
   };
 
   // ─── SCHEDULE ────────────────────────────────────────────────────────────────
-  const scheduleNewPickup = async (date, time, wasteType, weight = 1.0, price = 0, address = '') => {
+  const scheduleNewPickup = async (date, time, wasteType, weight = 1.0, price = 0, address = '', latitude = null, longitude = null) => {
     try {
       const token = localStorage.getItem('eco_token');
       const res = await fetch(`${API_BASE}/api/schedules`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ date, time, waste_type: wasteType, weight, price, address })
+        body: JSON.stringify({ date, time, waste_type: wasteType, weight, price, address, latitude, longitude })
       });
       const data = await res.json();
       if (!res.ok) return { success: false, message: data.message };
@@ -224,6 +234,7 @@ export const MobileProvider = ({ children }) => {
           type: 'success'
         });
       } catch (err) {
+        // non-fatal; still notify user
         addNotification({
           id: Date.now(),
           title: 'Pickup Scheduled!',
@@ -234,7 +245,7 @@ export const MobileProvider = ({ children }) => {
       return { success: true };
     } catch {
       // Fallback update in case API is temporarily offline
-      const newSlot = { date, time, type: `${wasteType} Pickup`, status: 'Upcoming', weight, price, address };
+      const newSlot = { date, time, type: `${wasteType} Pickup`, status: 'Upcoming', weight, price, address, latitude, longitude };
       setScheduledSlots(prev => [newSlot, ...prev]);
       addNotification({
         id: Date.now(),
@@ -243,6 +254,37 @@ export const MobileProvider = ({ children }) => {
         type: 'success'
       });
       return { success: true };
+    }
+  };
+
+  // ─── MOMO MOBILE MONEY PAYMENT ────────────────────────────────────────────────
+  const payMomo = async (scheduleId, amount, pin, phone) => {
+    try {
+      const token = localStorage.getItem('eco_token');
+      const res = await fetch(`${API_BASE}/api/schedules/${scheduleId}/pay-momo`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ amount, pin, phone })
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, message: data.message || 'Momo payment failed' };
+
+      // Sync user data to update the status to 'paid' and 'Completed'
+      await fetchUserData(user);
+
+      addNotification({
+        id: Date.now(),
+        title: 'MoMo Payment Successful!',
+        message: `Payment of ${amount} processed via MoMo. Status updated to Completed.`,
+        type: 'success'
+      });
+      return { success: true, message: data.message };
+    } catch (err) {
+      console.error('payMomo error:', err);
+      return { success: false, message: 'Server unreachable. Please try again.' };
     }
   };
 
@@ -276,7 +318,7 @@ export const MobileProvider = ({ children }) => {
       truckDistance, isTruckNear,
       logs, setLogs,
       verifyBinAndReward,
-      scheduledSlots, scheduleNewPickup,
+      scheduledSlots, scheduleNewPickup, payMomo,
       initializing
     }}>
       {children}

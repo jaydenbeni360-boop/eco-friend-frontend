@@ -42,11 +42,36 @@ const Schedule = () => {
     setPrice(calculatePrice(weight, type));
   };
 
-  const handleSubmit = (e) => {
+  const [locating, setLocating] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!date || !time || !weight || !streetNumber || !gateNumber) return;
+    
+    setLocating(true);
     const address = `Street ${streetNumber}, Gate ${gateNumber}${apartment ? `, ${apartment}` : ''}${landmark ? ` (Near ${landmark})` : ''}`;
-    scheduleNewPickup(date, time, wasteType, parseFloat(weight), parseFloat(price), address);
+
+    // Get exact location using browser geolocation
+    let latitude = null;
+    let longitude = null;
+    try {
+      const position = await new Promise((resolve, reject) => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000 });
+        } else {
+          reject(new Error('Geolocation not supported'));
+        }
+      });
+      latitude = position.coords.latitude;
+      longitude = position.coords.longitude;
+    } catch (err) {
+      // Fallback: random coordinate around Kigali center (-1.9456, 30.0891) for markers spread on map
+      latitude = -1.9456 + (Math.random() - 0.5) * 0.04;
+      longitude = 30.0891 + (Math.random() - 0.5) * 0.04;
+    }
+
+    await scheduleNewPickup(date, time, wasteType, parseFloat(weight), parseFloat(price), address, latitude, longitude);
+    setLocating(false);
     navigate('/dashboard');
   };
 
@@ -180,9 +205,10 @@ const Schedule = () => {
           </div>
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition-colors"
+            disabled={locating}
+            className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
           >
-            <span>Schedule</span>
+            <span>{locating ? 'Locating & Scheduling...' : 'Schedule'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
