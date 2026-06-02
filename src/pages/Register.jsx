@@ -7,6 +7,7 @@ const Register = () => {
   const { registerUser } = useMobile();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,7 +17,7 @@ const Register = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const result = await registerUser(name, email, password);
+    const result = await registerUser(name, email, password, phone);
     setLoading(false);
     if (result.success) {
       navigate('/dashboard');
@@ -79,6 +80,22 @@ const Register = () => {
                 style={styles.input}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label} htmlFor="reg-phone">Phone Number</label>
+            <div style={styles.inputWrap}>
+              <span style={styles.inputIcon}>📱</span>
+              <input
+                id="reg-phone"
+                type="tel"
+                required
+                placeholder="+1 (555) 000-0000"
+                style={styles.input}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
               />
             </div>
           </div>

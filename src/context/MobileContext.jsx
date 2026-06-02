@@ -170,17 +170,17 @@ export const MobileProvider = ({ children }) => {
     }
   };
 
-  const registerUser = async (name, email, password) => {
+  const registerUser = async (name, email, password, phone) => {
     try {
       const res = await fetch(`${API_BASE}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password, phone })
       });
       const data = await res.json();
       if (!res.ok) return { success: false, message: data.message || 'Registration failed' };
       localStorage.setItem('eco_token', data.token);
-      const registeredUser = { id: data.user.id, name: data.user.name, email: data.user.email, is_admin: false };
+      const registeredUser = { id: data.user.id, name: data.user.name, email: data.user.email, phone: data.user.phone, is_admin: false };
       setUser(registeredUser);
       return { success: true };
     } catch {
@@ -207,13 +207,30 @@ export const MobileProvider = ({ children }) => {
 
       // Re-fetch data to sync with backend DB
       await fetchUserData(user);
-      
-      addNotification({
-        id: Date.now(),
-        title: 'Pickup Scheduled!',
-        message: `Scheduled ${weight}kg of ${wasteType} for ${date} at ${time}. Total: $${price}`,
-        type: 'success'
-      });
+
+      // Immediately credit points for scheduling (1 point per kg rounded)
+      try {
+        const earnedPoints = Math.max(1, Math.round(Number(weight) || 1));
+        await fetch(`${API_BASE}/api/pickups`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ type: wasteType, weight, points: earnedPoints })
+        });
+        setPoints(prev => prev + earnedPoints);
+        addNotification({
+          id: Date.now(),
+          title: 'Pickup Scheduled!',
+          message: `Scheduled ${weight}kg of ${wasteType} for ${date} at ${time}. You earned +${earnedPoints} points!`,
+          type: 'success'
+        });
+      } catch (err) {
+        addNotification({
+          id: Date.now(),
+          title: 'Pickup Scheduled!',
+          message: `Scheduled ${weight}kg of ${wasteType} for ${date} at ${time}.`,
+          type: 'success'
+        });
+      }
       return { success: true };
     } catch {
       // Fallback update in case API is temporarily offline

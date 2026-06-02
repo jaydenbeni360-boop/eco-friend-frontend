@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMobile } from '../context/MobileContext';
+import MapComponent from '../components/MapComponent';
 import {
   Calendar, Package, LogOut, CheckCircle,
   Clock, TrendingUp, Trash2, RefreshCw
@@ -130,6 +131,12 @@ const AdminDashboard = () => {
         >
           <Package size={14} /> Pickup Logs
         </button>
+        <button
+          onClick={() => setActiveTab('map')}
+          style={{ ...S.tab, ...(activeTab === 'map' ? S.activeTab : {}) }}
+        >
+          📍 Map View
+        </button>
         <button onClick={fetchData} style={S.refreshBtn} title="Refresh data">
           <RefreshCw size={14} />
         </button>
@@ -152,7 +159,7 @@ const AdminDashboard = () => {
             <table style={S.table}>
               <thead>
                 <tr>
-                  {['User', 'Email', 'Date', 'Time', 'Waste Type', 'Address', 'Status', 'Action'].map(h => (
+                  {['User', 'Email', 'Phone', 'Date', 'Time', 'Waste Type', 'Weight', 'Price', 'Address', 'Status', 'Action'].map(h => (
                     <th key={h} style={S.th}>{h}</th>
                   ))}
                 </tr>
@@ -162,9 +169,12 @@ const AdminDashboard = () => {
                   <tr key={s.id} style={{ ...S.tr, background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
                     <td style={S.td}><strong>{s.user_name || '—'}</strong></td>
                     <td style={S.td}>{s.user_email || '—'}</td>
+                    <td style={S.td}>{s.user_phone || '—'}</td>
                     <td style={S.td}>{s.date ? new Date(s.date).toLocaleDateString('en-GB') : '—'}</td>
                     <td style={S.td}>{s.time || '—'}</td>
                     <td style={S.td}>{s.waste_type || '—'}</td>
+                    <td style={S.td}>{s.weight || '—'} kg</td>
+                    <td style={S.td}>${s.price || '—'}</td>
                     <td style={S.td}>{s.address || '—'}</td>
                     <td style={S.td}>
                       <span style={s.status === 'Completed' ? S.badgeDone : S.badgePending}>
@@ -186,6 +196,8 @@ const AdminDashboard = () => {
               </tbody>
             </table>
           )
+        ) : activeTab === 'map' ? (
+          <MapComponent />
         ) : (
           pickups.length === 0 ? (
             <div style={S.empty}>
