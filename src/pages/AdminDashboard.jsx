@@ -57,6 +57,45 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleSetPayment = async (id) => {
+    try {
+      const token = localStorage.getItem('eco_token');
+      const weightInput = window.prompt('Enter measured weight (kg):');
+      if (weightInput === null) return; // cancelled
+      const amountInput = window.prompt('Enter amount to charge (e.g., 12.50):');
+      if (amountInput === null) return;
+      const weight = parseFloat(weightInput);
+      const amount = parseFloat(amountInput);
+      await fetch(`${API_BASE}/api/schedules/${id}/payment`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ weight, amount_due: amount, payment_status: 'pending', price: amount })
+      });
+      setSchedules(prev => prev.map(s => s.id === id ? { ...s, weight, amount_due: amount, payment_status: 'pending', price: amount } : s));
+      // Inform admin locally
+      alert('Payment details saved and customer marked pending payment.');
+    } catch (err) {
+      console.error('Set payment error:', err);
+      alert('Failed to set payment details. Check console.');
+    }
+  };
+
+  const handleNotify = async (id) => {
+    try {
+      // For now we reuse the payment endpoint to ensure schedule is marked pending before notifying
+      const token = localStorage.getItem('eco_token');
+      await fetch(`${API_BASE}/api/schedules/${id}/payment`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ payment_status: 'pending' })
+      });
+      alert('Customer notified (please implement real notification backend).');
+    } catch (err) {
+      console.error('Notify error:', err);
+      alert('Failed to notify customer.');
+    }
+  };
+
   const handleLogout = () => {
     logoutUser();
     navigate('/login');
@@ -182,14 +221,15 @@ const AdminDashboard = () => {
                       </span>
                     </td>
                     <td style={S.td}>
-                      {s.status !== 'Completed' && (
-                        <button
-                          onClick={() => handleMarkComplete(s.id)}
-                          style={S.completeBtn}
-                        >
-                          <CheckCircle size={12} /> Mark Done
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {s.status !== 'Completed' && (
+                          <button onClick={() => handleMarkComplete(s.id)} style={S.completeBtn}>
+                            <CheckCircle size={12} /> Mark Done
+                          </button>
+                        )}
+                        <button onClick={() => handleSetPayment(s.id)} style={S.actionBtn}>Set Weight / Price</button>
+                        <button onClick={() => handleNotify(s.id)} style={S.notifyBtn}>Notify</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -469,6 +509,26 @@ const S = {
     borderRadius: '8px',
     padding: '5px 10px',
     fontSize: '10px',
+    fontWeight: '700',
+    cursor: 'pointer',
+  },
+  actionBtn: {
+    background: '#eef2ff',
+    border: '1px solid #c7d2fe',
+    color: '#4338ca',
+    borderRadius: '8px',
+    padding: '6px 10px',
+    fontSize: '12px',
+    fontWeight: '700',
+    cursor: 'pointer',
+  },
+  notifyBtn: {
+    background: '#fff7ed',
+    border: '1px solid #fed7aa',
+    color: '#92400e',
+    borderRadius: '8px',
+    padding: '6px 10px',
+    fontSize: '12px',
     fontWeight: '700',
     cursor: 'pointer',
   },

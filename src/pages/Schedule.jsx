@@ -9,44 +9,24 @@ const Schedule = () => {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [wasteType, setWasteType] = useState('Household Waste');
-  const [weight, setWeight] = useState('');
   const [price, setPrice] = useState(0);
   const [streetNumber, setStreetNumber] = useState('');
   const [gateNumber, setGateNumber] = useState('');
   const [apartment, setApartment] = useState('');
   const [landmark, setLandmark] = useState('');
 
-  // Pricing per kg for each waste type
-  const pricingRules = {
-    'Household Waste': 2.50,
-    'Bulky Waste': 5.00,
-    'Recyclable Waste': 1.50,
-    'Electronic Waste': 10.00
-  };
-
-  const calculatePrice = (w, type) => {
-    const kg = parseFloat(w) || 0;
-    const pricePerKg = pricingRules[type] || 2.50;
-    return (kg * pricePerKg).toFixed(2);
-  };
-
-  const handleWeightChange = (e) => {
-    const w = e.target.value;
-    setWeight(w);
-    setPrice(calculatePrice(w, wasteType));
-  };
-
   const handleWasteTypeChange = (e) => {
     const type = e.target.value;
     setWasteType(type);
-    setPrice(calculatePrice(weight, type));
+    // price is determined by admin after weighing; keep 0 for user
+    setPrice(0);
   };
 
   const [locating, setLocating] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!date || !time || !weight || !streetNumber || !gateNumber) return;
+    if (!date || !time || !streetNumber || !gateNumber) return;
     
     setLocating(true);
     const address = `Street ${streetNumber}, Gate ${gateNumber}${apartment ? `, ${apartment}` : ''}${landmark ? ` (Near ${landmark})` : ''}`;
@@ -70,7 +50,8 @@ const Schedule = () => {
       longitude = 30.0891 + (Math.random() - 0.5) * 0.04;
     }
 
-    await scheduleNewPickup(date, time, wasteType, parseFloat(weight), parseFloat(price), address, latitude, longitude);
+    // User doesn't supply weight/price anymore — admin will measure and set amount
+    await scheduleNewPickup(date, time, wasteType, null, 0, address, latitude, longitude);
     setLocating(false);
     navigate('/dashboard');
   };
