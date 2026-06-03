@@ -107,6 +107,8 @@ const MapComponent = () => {
     markersRef.current.forEach(m => m.setMap(null));
     markersRef.current = [];
     const bounds = new window.google.maps.LatLngBounds();
+    // Ensure NuVision High School (Kabuga) is included as a default anchor
+    const SCHOOL_POS = { lat: -1.9720, lng: 30.1490 };
 
     for (const sched of list) {
       if (!sched.address) continue;
@@ -169,7 +171,13 @@ const MapComponent = () => {
     }
 
     if (!bounds.isEmpty) {
+      // include school so map doesn't recenter away from Kabuga
+      try { bounds.extend(SCHOOL_POS); } catch (e) {}
       gmMap.current.fitBounds(bounds);
+    } else {
+      // no schedule markers found — default to school
+      gmMap.current.setCenter(SCHOOL_POS);
+      gmMap.current.setZoom(17);
     }
   };
 
