@@ -20,26 +20,34 @@ const MapComponent = () => {
   const espPollRef = useRef(null);
   const markersRef = useRef([]);
 
-  // helper to create AdvancedMarkerElement when available (falls back to classic Marker)
   const createMarkerElement = (position, title, color) => {
-    if (window.google && window.google.maps && window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement) {
-      const content = document.createElement('div');
-      content.style.width = '16px';
-      content.style.height = '16px';
-      content.style.background = color || '#0ea5a4';
-      content.style.borderRadius = '50%';
-      content.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
-      content.title = title || '';
-      return new window.google.maps.marker.AdvancedMarkerElement({ position, map: gmMap.current, title, content });
+    if (!window.google || !window.google.maps || !gmMap.current) return null;
+    const markerOptions = {
+      position,
+      map: gmMap.current,
+      title: title || '',
+      animation: window.google.maps.Animation.DROP,
+    };
+
+    if (color) {
+      markerOptions.icon = {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        fillColor: color,
+        fillOpacity: 0.95,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+        scale: 8,
+      };
     }
-    return new window.google.maps.Marker({ position, map: gmMap.current, title, animation: window.google.maps.Animation.DROP });
+
+    return new window.google.maps.Marker(markerOptions);
   };
 
   useEffect(() => {
     if (!window.google) {
         const s = document.createElement('script');
-        // include the marker library and prefer lazy loading for performance
-        s.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,marker`;
+        // include the places library for geocoding and place support
+        s.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
         s.async = true;
         s.defer = true;
         // hint browser to lazy-load the script
@@ -253,11 +261,13 @@ const MapComponent = () => {
       const pos = { lat: Number(lat), lng: Number(lng) };
       if (!liveTrackMarkerRef.current) {
         liveTrackMarkerRef.current = createMarkerElement(pos, 'Vehicle (live)', '#0ea5a4');
-      } else {
+      } else if (liveTrackMarkerRef.current) {
         if (typeof liveTrackMarkerRef.current.setPosition === 'function') {
           liveTrackMarkerRef.current.setPosition(pos);
+        } else if (typeof liveTrackMarkerRef.current.setOptions === 'function') {
+          liveTrackMarkerRef.current.setOptions({ position: pos });
         } else {
-          try { liveTrackMarkerRef.current.position = pos; } catch (e) { /* ignore */ }
+          liveTrackMarkerRef.current.position = pos;
         }
       }
     };
