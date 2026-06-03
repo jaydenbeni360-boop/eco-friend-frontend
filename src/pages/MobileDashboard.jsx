@@ -36,7 +36,7 @@ const loadGoogleMaps = () => {
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,marker`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
     script.async = true;
     script.defer = true;
     try { script.setAttribute('loading', 'lazy'); } catch (e) {}
@@ -81,18 +81,27 @@ const MobileDashboard = () => {
         mapRef.current = map;
         // Helper to create AdvancedMarkerElement when available, fallback to classic Marker
         const createMarkerElement = (position, { title = '', color = null, icon = null } = {}) => {
-          if (maps.marker && maps.marker.AdvancedMarkerElement) {
-            const content = document.createElement('div');
-            content.style.width = '18px';
-            content.style.height = '18px';
-            content.style.background = color || '#0ea5a4';
-            content.style.borderRadius = '50%';
-            content.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
-            content.title = title || '';
-            return new maps.marker.AdvancedMarkerElement({ position, map, title, content });
+          if (!maps || !maps.Marker) return null;
+          const options = {
+            position,
+            map,
+            title: title || '',
+          };
+
+          if (icon) {
+            options.icon = icon;
+          } else if (color) {
+            options.icon = {
+              path: maps.SymbolPath.CIRCLE,
+              fillColor: color,
+              fillOpacity: 0.95,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+              scale: 8,
+            };
           }
-          // fallback to classic Marker
-          return new maps.Marker({ position, map, title, icon });
+
+          return new maps.Marker(options);
         };
 
         // User marker (green circle)
@@ -150,12 +159,22 @@ const MobileDashboard = () => {
     if (!mapRef.current) return;
     const newPos = computeTruckCoords(truckDistance);
     if (truckMarkerRef.current) {
-      truckMarkerRef.current.setPosition(newPos);
+      if (typeof truckMarkerRef.current.setPosition === 'function') {
+        truckMarkerRef.current.setPosition(newPos);
+      } else if (typeof truckMarkerRef.current.setOptions === 'function') {
+        truckMarkerRef.current.setOptions({ position: newPos });
+      } else {
+        truckMarkerRef.current.position = newPos;
+      }
     }
     const bounds = new window.google.maps.LatLngBounds();
     bounds.extend(userCoords);
     bounds.extend(newPos);
-    mapRef.current.fitBounds(bounds, { padding: [30, 30], animate: true, duration: 1000 });
+    try {
+      mapRef.current.fitBounds(bounds, { padding: [30, 30], animate: true, duration: 1000 });
+    } catch (e) {
+      mapRef.current.fitBounds(bounds, { padding: [30, 30] });
+    }
   }, [truckDistance]);
 
   return (
