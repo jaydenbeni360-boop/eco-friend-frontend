@@ -48,13 +48,13 @@ const Schedule = () => {
         longitude = position.coords.longitude;
       } else {
         // Device geolocation disabled for testing — use school coords
-        latitude = -1.967308;
-        longitude = 30.227309;
+        latitude = -1.967863143485511;
+        longitude = 30.22795411155306;
       }
     } catch (err) {
       // Fallback: use school coordinates
-      latitude = -1.967308;
-      longitude = 30.227309;
+      latitude = -1.967863143485511;
+      longitude = 30.22795411155306;
     }
 
     // User doesn't supply weight/price anymore — admin will measure and set amount
