@@ -12,6 +12,7 @@ const MapComponent = () => {
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const mapRef = useRef(null);
   const gmMap = useRef(null);
+  const liveTrackMarkerRef = useRef(null); // placeholder for future ESP32 live GPS marker
   const markersRef = useRef([]);
 
   useEffect(() => {
@@ -39,13 +40,13 @@ const MapComponent = () => {
   const initMap = () => {
     if (!mapRef.current || !window.google) return;
     gmMap.current = new window.google.maps.Map(mapRef.current, {
-      center: { lat: -1.9720, lng: 30.1490 },
+      center: { lat: -1.9678313153773934, lng: 30.227951022306453 },
       zoom: 17,
     });
 
     // Add default marker for NuVision High School (Kabuga)
     try {
-      const schoolPosition = { lat: -1.9720, lng: 30.1490 };
+      const schoolPosition = { lat: -1.9678313153773934, lng: 30.227951022306453 };
       new window.google.maps.Marker({
         position: schoolPosition,
         map: gmMap.current,
@@ -108,7 +109,7 @@ const MapComponent = () => {
     markersRef.current = [];
     const bounds = new window.google.maps.LatLngBounds();
     // Ensure NuVision High School (Kabuga) is included as a default anchor
-    const SCHOOL_POS = { lat: -1.9720, lng: 30.1490 };
+    const SCHOOL_POS = { lat: -1.9678313153773934, lng: 30.227951022306453 };
 
     for (const sched of list) {
       if (!sched.address) continue;
