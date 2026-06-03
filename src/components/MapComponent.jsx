@@ -10,6 +10,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'https://eco-friend-api.vercel
 const MapComponent = () => {
   const { user } = useMobile();
   const [schedules, setSchedules] = useState([]);
+  const [espIp, setEspIp] = useState('');
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const mapRef = useRef(null);
   const gmMap = useRef(null);
@@ -313,6 +314,34 @@ const MapComponent = () => {
     <div style={styles.container}>
       <div style={styles.mapSection}>
         <div id="mapContainer" ref={mapRef} style={styles.map} />
+        <div style={styles.espOverlay}>
+          <input
+            value={espIp}
+            onChange={(e) => setEspIp(e.target.value)}
+            placeholder="ESP32 IP (e.g. 192.168.1.42)"
+            style={styles.espInput}
+          />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => {
+                if (espIp && window.__startESP32Polling) {
+                  window.__startESP32Polling(espIp);
+                }
+              }}
+              style={styles.espButton}
+            >
+              Connect
+            </button>
+            <button
+              onClick={() => {
+                if (window.__stopESP32Polling) window.__stopESP32Polling();
+              }}
+              style={{ ...styles.espButton, backgroundColor: '#ef4444' }}
+            >
+              Disconnect
+            </button>
+          </div>
+        </div>
       </div>
       <div style={styles.detailsSection}>
         <h3 style={styles.detailsTitle}>📍 Booking Details</h3>
@@ -366,6 +395,33 @@ const styles = {
     width: '100%',
     height: '100%',
     minHeight: '420px',
+  },
+  espOverlay: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    padding: '8px',
+    borderRadius: 8,
+    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    zIndex: 10,
+  },
+  espInput: {
+    padding: '6px 8px',
+    borderRadius: 6,
+    border: '1px solid #d1d5db',
+    width: 220,
+  },
+  espButton: {
+    padding: '6px 10px',
+    backgroundColor: '#0ea5a4',
+    color: 'white',
+    border: 'none',
+    borderRadius: 6,
+    cursor: 'pointer',
   },
   detailsSection: {
     flex: 1,
