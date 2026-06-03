@@ -18,12 +18,30 @@ const MapComponent = () => {
   const espPollRef = useRef(null);
   const markersRef = useRef([]);
 
+  // helper to create AdvancedMarkerElement when available (falls back to classic Marker)
+  const createMarkerElement = (position, title, color) => {
+    if (window.google && window.google.maps && window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement) {
+      const content = document.createElement('div');
+      content.style.width = '16px';
+      content.style.height = '16px';
+      content.style.background = color || '#0ea5a4';
+      content.style.borderRadius = '50%';
+      content.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+      content.title = title || '';
+      return new window.google.maps.marker.AdvancedMarkerElement({ position, map: gmMap.current, title, content });
+    }
+    return new window.google.maps.Marker({ position, map: gmMap.current, title, animation: window.google.maps.Animation.DROP });
+  };
+
   useEffect(() => {
     if (!window.google) {
-      const s = document.createElement('script');
-      s.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
-      s.async = true;
-      s.defer = true;
+        const s = document.createElement('script');
+        // include the marker library and prefer lazy loading for performance
+        s.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,marker`;
+        s.async = true;
+        s.defer = true;
+        // hint browser to lazy-load the script
+        try { s.setAttribute('loading', 'lazy'); } catch (e) {}
       s.onload = () => initMap();
       document.head.appendChild(s);
     } else {
@@ -50,12 +68,7 @@ const MapComponent = () => {
     // Add default marker for NuVision High School (Kabuga)
     try {
       const schoolPosition = { lat: -1.967308, lng: 30.227309 };
-      new window.google.maps.Marker({
-        position: schoolPosition,
-        map: gmMap.current,
-        title: 'NuVision High School (Kabuga)',
-        animation: window.google.maps.Animation.DROP,
-      });
+      createMarkerElement(schoolPosition, 'NuVision High School (Kabuga)', '#2563eb');
       // Ensure map stays centered on the school by default
       gmMap.current.setCenter(schoolPosition);
       gmMap.current.setZoom(17);
@@ -145,11 +158,7 @@ const MapComponent = () => {
         }
       }
 
-      const marker = new window.google.maps.Marker({
-        position,
-        map: gmMap.current,
-        title: sched.user_name || sched.user_email || 'Booking',
-      });
+      const marker = createMarkerElement(position, sched.user_name || sched.user_email || 'Booking');
 
       const infoHtml = `
         <div style="font-size:13px; line-height:1.25; max-width:260px;">
@@ -165,10 +174,17 @@ const MapComponent = () => {
       `;
 
       const infowindow = new window.google.maps.InfoWindow({ content: infoHtml });
-      marker.addListener('click', () => {
-        infowindow.open({ anchor: marker, map: gmMap.current, shouldFocus: false });
-        setSelectedSchedule(sched);
-      });
+      if (marker.addListener) {
+        marker.addListener('click', () => {
+          infowindow.open({ anchor: marker, map: gmMap.current, shouldFocus: false });
+          setSelectedSchedule(sched);
+        });
+      } else if (marker.addEventListener) {
+        marker.addEventListener('click', () => {
+          infowindow.open({ anchor: marker, map: gmMap.current, shouldFocus: false });
+          setSelectedSchedule(sched);
+        });
+      }
 
       markersRef.current.push(marker);
       bounds.extend(position);
@@ -189,21 +205,13 @@ const MapComponent = () => {
       if (!window.google || !gmMap.current) return;
       const pos = { lat: Number(lat), lng: Number(lng) };
       if (!liveTrackMarkerRef.current) {
-        liveTrackMarkerRef.current = new window.google.maps.Marker({
-          position: pos,
-          map: gmMap.current,
-          title: 'Vehicle (live)',
-          icon: {
-            path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-            scale: 5,
-            fillColor: '#0ea5a4',
-            fillOpacity: 1,
-            strokeColor: '#064e3b',
-            strokeWeight: 1,
-          },
-        });
+        liveTrackMarkerRef.current = createMarkerElement(pos, 'Vehicle (live)', '#0ea5a4');
       } else {
-        liveTrackMarkerRef.current.setPosition(pos);
+        if (typeof liveTrackMarkerRef.current.setPosition === 'function') {
+          liveTrackMarkerRef.current.setPosition(pos);
+        } else {
+          try { liveTrackMarkerRef.current.position = pos; } catch (e) { /* ignore */ }
+        }
       }
     };
 
