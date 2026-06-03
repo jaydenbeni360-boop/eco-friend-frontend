@@ -4,6 +4,8 @@ import { useMobile } from '../context/MobileContext';
 // Use environment key if provided. Do not embed a fallback key in source.
 const FALLBACK_GOOGLE_KEY = '';
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API || FALLBACK_GOOGLE_KEY;
+// Optional Map ID (set in Google Cloud console) to enable vector maps / advanced markers
+const GOOGLE_MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || '';
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://eco-friend-api.vercel.app';
 
 const MapComponent = () => {
@@ -42,6 +44,13 @@ const MapComponent = () => {
         s.defer = true;
         // hint browser to lazy-load the script
         try { s.setAttribute('loading', 'lazy'); } catch (e) {}
+      // Global auth failure hook for Google Maps API errors
+      window.gm_authFailure = function() {
+        console.error('Google Maps auth failure (gm_authFailure) — check API key, billing, and referrers');
+        const el = document.getElementById('gm-error-overlay');
+        if (el) el.style.display = 'flex';
+      };
+
       s.onload = () => initMap();
       document.head.appendChild(s);
     } else {
@@ -63,6 +72,7 @@ const MapComponent = () => {
     gmMap.current = new window.google.maps.Map(mapRef.current, {
       center: { lat: -1.9679684719159565, lng: 30.228077067239514 },
       zoom: 17,
+      ...(GOOGLE_MAP_ID ? { mapId: GOOGLE_MAP_ID } : {}),
     });
 
     // Add default marker for NuVision High School (Kabuga)
@@ -97,6 +107,24 @@ const MapComponent = () => {
         }
       } catch (e) { /* ignore */ }
     };
+
+    // create a small overlay element for auth errors if not present
+    if (!document.getElementById('gm-error-overlay')) {
+      const ov = document.createElement('div');
+      ov.id = 'gm-error-overlay';
+      ov.style.position = 'absolute';
+      ov.style.left = '0';
+      ov.style.right = '0';
+      ov.style.top = '0';
+      ov.style.bottom = '0';
+      ov.style.display = 'none';
+      ov.style.alignItems = 'center';
+      ov.style.justifyContent = 'center';
+      ov.style.background = 'rgba(0,0,0,0.5)';
+      ov.style.zIndex = '9999';
+      ov.innerHTML = `<div style="background:#fff;padding:18px;border-radius:8px;max-width:520px;text-align:left;color:#111;">Google Maps failed to load. Check API key, billing, or referrer restrictions in the Google Cloud Console.</div>`;
+      document.body.appendChild(ov);
+    }
   };
 
   const geocodeAddress = (address) => new Promise((resolve, reject) => {
