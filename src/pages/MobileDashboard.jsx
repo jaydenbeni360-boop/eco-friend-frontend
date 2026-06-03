@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { useMobile } from '../context/MobileContext';
 import { MapPin, Truck, Award, Clock, ArrowRight } from 'lucide-react';
 
-// Google Maps API key (provided by user)
-const GOOGLE_MAPS_API_KEY = 'AIzaSyCAP3Mp_XOeqE0VJmOGSrZ903IH1vvBNfQ';
+// Prefer Vite-provided env vars. Support both names in case Render uses a different key name.
+// Do not embed a fallback key in source code to avoid leaking API keys in builds.
+const FALLBACK_GOOGLE_KEY = '';
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API || FALLBACK_GOOGLE_KEY;
 
 let googleMapsLoadingPromise = null;
 
@@ -22,25 +24,24 @@ const loadGoogleMaps = () => {
     // Check if script tag is already in DOM to be safe
     const existingScript = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
     if (existingScript) {
-      const originalCallback = window.initGoogleMaps;
-      window.initGoogleMaps = () => {
-        if (originalCallback) originalCallback();
+      // if already loaded, resolve immediately
+      if (window.google && window.google.maps) {
         resolve(window.google.maps);
-      };
+        return;
+      }
+      // otherwise wait for its load
+      existingScript.addEventListener('load', () => resolve(window.google.maps));
+      existingScript.addEventListener('error', (e) => { googleMapsLoadingPromise = null; reject(e); });
       return;
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initGoogleMaps`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,marker`;
     script.async = true;
     script.defer = true;
-    window.initGoogleMaps = () => {
-      resolve(window.google.maps);
-    };
-    script.onerror = (err) => {
-      googleMapsLoadingPromise = null; // allow retry on error
-      reject(err);
-    };
+    try { script.setAttribute('loading', 'lazy'); } catch (e) {}
+    script.onload = () => resolve(window.google.maps);
+    script.onerror = (err) => { googleMapsLoadingPromise = null; reject(err); };
     document.head.appendChild(script);
   });
 
@@ -78,11 +79,26 @@ const MobileDashboard = () => {
           clickableIcons: false,
         });
         mapRef.current = map;
+        // Helper to create AdvancedMarkerElement when available, fallback to classic Marker
+        const createMarkerElement = (position, { title = '', color = null, icon = null } = {}) => {
+          if (maps.marker && maps.marker.AdvancedMarkerElement) {
+            const content = document.createElement('div');
+            content.style.width = '18px';
+            content.style.height = '18px';
+            content.style.background = color || '#0ea5a4';
+            content.style.borderRadius = '50%';
+            content.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+            content.title = title || '';
+            return new maps.marker.AdvancedMarkerElement({ position, map, title, content });
+          }
+          // fallback to classic Marker
+          return new maps.Marker({ position, map, title, icon });
+        };
 
         // User marker (green circle)
-        const userMarker = new maps.Marker({
-          position: userCoords,
-          map,
+        const userMarker = createMarkerElement(userCoords, {
+          title: 'You',
+          color: '#10b981',
           icon: {
             path: maps.SymbolPath.CIRCLE,
             fillColor: '#10b981',
@@ -96,18 +112,18 @@ const MobileDashboard = () => {
 
         // Truck marker (custom SVG icon)
         const initialTruckCoords = computeTruckCoords(1.8);
-        const truckMarker = new maps.Marker({
-          position: initialTruckCoords,
-          map,
-          icon: {
-            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+        const truckSvg = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
               <svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'>
                 <path d='M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2'/>
                 <polyline points='14 18 14 14 20 14 22 17 22 18 14 18'/>
                 <circle cx='7.5' cy='18.5' r='2.5'/>
                 <circle cx='18.5' cy='18.5' r='2.5'/>
               </svg>
-            `),
+            `);
+        const truckMarker = createMarkerElement(initialTruckCoords, {
+          title: 'Truck',
+          icon: {
+            url: truckSvg,
             scaledSize: new maps.Size(30, 30),
             anchor: new maps.Point(15, 15),
           },

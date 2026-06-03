@@ -1,10 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { useMobile } from '../context/MobileContext';
 
-// Use environment key if provided, otherwise fallback to the provided key
-// Updated fallback key per user request
-const FALLBACK_GOOGLE_KEY = 'AIzaSyC8O5lquHXmsVX68kE46I6qPx3MjQ-gcK8';
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || FALLBACK_GOOGLE_KEY;
+// Use environment key if provided. Do not embed a fallback key in source.
+const FALLBACK_GOOGLE_KEY = '';
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API || FALLBACK_GOOGLE_KEY;
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://eco-friend-api.vercel.app';
 
 const MapComponent = () => {
@@ -15,6 +14,7 @@ const MapComponent = () => {
   const mapRef = useRef(null);
   const gmMap = useRef(null);
   const liveTrackMarkerRef = useRef(null); // placeholder for future ESP32 live GPS marker
+  const schoolMarkerRef = useRef(null);
   const espPollRef = useRef(null);
   const markersRef = useRef([]);
 
@@ -68,7 +68,8 @@ const MapComponent = () => {
     // Add default marker for NuVision High School (Kabuga)
     try {
       const schoolPosition = { lat: -1.9679684719159565, lng: 30.228077067239514 };
-      createMarkerElement(schoolPosition, 'NuVision High School (Kabuga)', '#2563eb');
+      const schoolMarker = createMarkerElement(schoolPosition, 'NuVision High School (Kabuga)', '#2563eb');
+      schoolMarkerRef.current = schoolMarker;
       // Ensure map stays centered on the school by default
       gmMap.current.setCenter(schoolPosition);
       gmMap.current.setZoom(17);
@@ -78,6 +79,24 @@ const MapComponent = () => {
     }
 
     fetchSchedules();
+
+    // expose helper to center map exactly like the screenshot
+    window.__centerOnNuVision = () => {
+      try {
+        const pos = { lat: -1.9679684719159565, lng: 30.228077067239514 };
+        if (gmMap.current) {
+          gmMap.current.setCenter(pos);
+          gmMap.current.setZoom(17);
+        }
+        if (schoolMarkerRef.current) {
+          if (schoolMarkerRef.current.getTitle && typeof schoolMarkerRef.current.getTitle === 'function') {
+            // open an info window if available
+            const iw = new window.google.maps.InfoWindow({ content: 'NuVision High School (Kabuga)' });
+            try { iw.open({ anchor: schoolMarkerRef.current, map: gmMap.current, shouldFocus: false }); } catch (e) { /* ignore */ }
+          }
+        }
+      } catch (e) { /* ignore */ }
+    };
   };
 
   const geocodeAddress = (address) => new Promise((resolve, reject) => {
