@@ -39,9 +39,27 @@ const MapComponent = () => {
   const initMap = () => {
     if (!mapRef.current || !window.google) return;
     gmMap.current = new window.google.maps.Map(mapRef.current, {
-      center: { lat: 0, lng: 0 },
-      zoom: 2,
+      center: { lat: -1.9720, lng: 30.1490 },
+      zoom: 17,
     });
+
+    // Add default marker for NuVision High School (Kabuga)
+    try {
+      const schoolPosition = { lat: -1.9720, lng: 30.1490 };
+      new window.google.maps.Marker({
+        position: schoolPosition,
+        map: gmMap.current,
+        title: 'NuVision High School (Kabuga)',
+        animation: window.google.maps.Animation.DROP,
+      });
+      // Ensure map stays centered on the school by default
+      gmMap.current.setCenter(schoolPosition);
+      gmMap.current.setZoom(17);
+    } catch (e) {
+      // ignore marker errors
+      // console.warn('School marker init failed', e);
+    }
+
     fetchSchedules();
   };
 
