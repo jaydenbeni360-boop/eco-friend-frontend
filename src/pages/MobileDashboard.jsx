@@ -48,7 +48,7 @@ const loadGoogleMaps = () => {
   return googleMapsLoadingPromise;
 };
 
-const userCoords = { lat: -1.9456, lng: 30.0891 };
+const userCoords = { lat: -1.967863143485511, lng: 30.22795411155306 };
 
 const MobileDashboard = () => {
   const { points, truckDistance, isTruckNear, scheduledSlots, user } = useMobile();
@@ -56,13 +56,14 @@ const MobileDashboard = () => {
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
   const truckMarkerRef = useRef(null);
+  const schoolMarkerRef = useRef(null);
 
   // Compute truck coordinates based on distance (simple linear interpolation)
   const computeTruckCoords = (distance) => {
     const factor = distance / 1.8; // distance ranges from 1.8km (far) to 0.2km (near)
     return {
-      lat: -1.9456 + factor * 0.005,
-      lng: 30.0891 + factor * 0.007,
+      lat: -1.967863143485511 + factor * 0.005,
+      lng: 30.22795411155306 + factor * 0.007,
     };
   };
 
@@ -118,6 +119,16 @@ const MobileDashboard = () => {
           },
         });
         userMarkerRef.current = userMarker;
+
+        const schoolMarker = createMarkerElement(userCoords, {
+          title: 'NuVision High School',
+          color: '#2563eb',
+        });
+        schoolMarkerRef.current = schoolMarker;
+        const schoolInfoWindow = new maps.InfoWindow({
+          content: 'NuVision High School',
+        });
+        schoolInfoWindow.open(map, schoolMarker);
 
         // Truck marker (custom SVG icon)
         const initialTruckCoords = computeTruckCoords(1.8);
