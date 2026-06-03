@@ -14,6 +14,7 @@ const MapComponent = () => {
   const mapRef = useRef(null);
   const gmMap = useRef(null);
   const liveTrackMarkerRef = useRef(null); // placeholder for future ESP32 live GPS marker
+  const espPollRef = useRef(null);
   const markersRef = useRef([]);
 
   useEffect(() => {
@@ -259,6 +260,39 @@ const MapComponent = () => {
     };
 
     window.__startFirebaseListener = startFirebaseListener;
+    // ESP32 polling helper (local testing)
+    const startESP32Polling = (espIp, intervalMs = 2000) => {
+      if (!espIp) return null;
+      // clear existing
+      if (espPollRef.current) clearInterval(espPollRef.current);
+      const url = `http://${espIp}/gps`;
+      espPollRef.current = setInterval(async () => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data && data.lat && data.lng) {
+            updateVehicleMarker(Number(data.lat), Number(data.lng));
+          }
+        } catch (err) {
+          // ignore errors during polling
+        }
+      }, intervalMs);
+      // expose id for clearing
+      window.__esp32PollId = espPollRef.current;
+      return espPollRef.current;
+    };
+
+    const stopESP32Polling = () => {
+      if (espPollRef.current) {
+        clearInterval(espPollRef.current);
+        espPollRef.current = null;
+        window.__esp32PollId = null;
+      }
+    };
+
+    window.__startESP32Polling = startESP32Polling;
+    window.__stopESP32Polling = stopESP32Polling;
   };
 
   const saveCoords = async (scheduleId, lat, lng) => {
