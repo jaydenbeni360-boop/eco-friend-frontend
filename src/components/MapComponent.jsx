@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useMobile } from '../context/MobileContext';
 
 // Use environment key if provided, otherwise fallback to the provided key
-const FALLBACK_GOOGLE_KEY = 'AIzaSyCAP3Mp_XOeqE0VJmOGSrZ903IH1vvBNfQ';
+// Updated fallback key per user request
+const FALLBACK_GOOGLE_KEY = 'AIzaSyC8O5lquHXmsVX68kE46I6qPx3MjQ-gcK8';
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || FALLBACK_GOOGLE_KEY;
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://eco-friend-api.vercel.app';
 
