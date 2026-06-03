@@ -40,13 +40,13 @@ const MapComponent = () => {
   const initMap = () => {
     if (!mapRef.current || !window.google) return;
     gmMap.current = new window.google.maps.Map(mapRef.current, {
-      center: { lat: -1.9678313153773934, lng: 30.227951022306453 },
+      center: { lat: -1.967308, lng: 30.227309 },
       zoom: 17,
     });
 
     // Add default marker for NuVision High School (Kabuga)
     try {
-      const schoolPosition = { lat: -1.9678313153773934, lng: 30.227951022306453 };
+      const schoolPosition = { lat: -1.967308, lng: 30.227309 };
       new window.google.maps.Marker({
         position: schoolPosition,
         map: gmMap.current,
@@ -109,7 +109,7 @@ const MapComponent = () => {
     markersRef.current = [];
     const bounds = new window.google.maps.LatLngBounds();
     // Ensure NuVision High School (Kabuga) is included as a default anchor
-    const SCHOOL_POS = { lat: -1.9678313153773934, lng: 30.227951022306453 };
+    const SCHOOL_POS = { lat: -1.967308, lng: 30.227309 };
 
     for (const sched of list) {
       if (!sched.address) continue;
@@ -180,6 +180,84 @@ const MapComponent = () => {
       gmMap.current.setCenter(SCHOOL_POS);
       gmMap.current.setZoom(17);
     }
+
+    // --- Live GPS helper: create/update vehicle marker when GPS data arrives ---
+    const updateVehicleMarker = (lat, lng) => {
+      if (!window.google || !gmMap.current) return;
+      const pos = { lat: Number(lat), lng: Number(lng) };
+      if (!liveTrackMarkerRef.current) {
+        liveTrackMarkerRef.current = new window.google.maps.Marker({
+          position: pos,
+          map: gmMap.current,
+          title: 'Vehicle (live)',
+          icon: {
+            path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            scale: 5,
+            fillColor: '#0ea5a4',
+            fillOpacity: 1,
+            strokeColor: '#064e3b',
+            strokeWeight: 1,
+          },
+        });
+      } else {
+        liveTrackMarkerRef.current.setPosition(pos);
+      }
+    };
+
+    // Expose for debug/testing on window
+    window.__updateVehicleMarker = updateVehicleMarker;
+
+    // --- Bluetooth receiver (Web Bluetooth) placeholder ---
+    // ESP32 should expose a BLE UART-like characteristic that sends newline-delimited JSON
+    const connectBluetooth = async () => {
+      if (!navigator.bluetooth) throw new Error('Web Bluetooth not supported');
+      // Common UART service UUID (Nordic) — change if your ESP32 uses a different UUID
+      const SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+      const RX_CHAR_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+      try {
+        const device = await navigator.bluetooth.requestDevice({ filters: [], optionalServices: [SERVICE_UUID] });
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        const rx = await service.getCharacteristic(RX_CHAR_UUID);
+        await rx.startNotifications();
+        let buffer = '';
+        rx.addEventListener('characteristicvaluechanged', (evt) => {
+          const value = new TextDecoder().decode(evt.target.value);
+          buffer += value;
+          let idx;
+          while ((idx = buffer.indexOf('\n')) >= 0) {
+            const line = buffer.slice(0, idx).trim();
+            buffer = buffer.slice(idx + 1);
+            try {
+              const obj = JSON.parse(line);
+              if (obj.latitude && obj.longitude) updateVehicleMarker(obj.latitude, obj.longitude);
+            } catch (e) {
+              // ignore non-json lines
+            }
+          }
+        });
+      } catch (err) {
+        // expose error to console
+        // console.error('Bluetooth connect failed', err);
+        throw err;
+      }
+    };
+
+    // Expose connect function for testing
+    window.__connectBluetoothGPS = connectBluetooth;
+
+    // --- Firebase listener placeholder ---
+    // Expected Firebase Realtime DB structure: /vehicles/{vehicleId}/location -> { latitude: number, longitude: number, timestamp: 123 }
+    const startFirebaseListener = (firebaseApp, vehicleId) => {
+      // This is a placeholder — ensure firebase is initialized in your app and pass the app instance here.
+      // Example usage:
+      // import { getDatabase, ref, onValue } from 'firebase/database';
+      // const db = getDatabase(firebaseApp);
+      // const locRef = ref(db, `vehicles/${vehicleId}/location`);
+      // onValue(locRef, (snap) => { const v = snap.val(); if (v) updateVehicleMarker(v.latitude, v.longitude); });
+    };
+
+    window.__startFirebaseListener = startFirebaseListener;
   };
 
   const saveCoords = async (scheduleId, lat, lng) => {

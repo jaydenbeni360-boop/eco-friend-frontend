@@ -23,6 +23,7 @@ const Schedule = () => {
   };
 
   const [locating, setLocating] = useState(false);
+  const USE_DEVICE_GEO = import.meta.env.VITE_USE_DEVICE_GEO === 'true'; // set to 'false' for testing
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,19 +36,25 @@ const Schedule = () => {
     let latitude = null;
     let longitude = null;
     try {
-      const position = await new Promise((resolve, reject) => {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000 });
-        } else {
-          reject(new Error('Geolocation not supported'));
-        }
-      });
-      latitude = position.coords.latitude;
-      longitude = position.coords.longitude;
+      if (USE_DEVICE_GEO) {
+        const position = await new Promise((resolve, reject) => {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000 });
+          } else {
+            reject(new Error('Geolocation not supported'));
+          }
+        });
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+      } else {
+        // Device geolocation disabled for testing — use school coords
+        latitude = -1.967308;
+        longitude = 30.227309;
+      }
     } catch (err) {
-      // Fallback: random coordinate around Kigali center (-1.9456, 30.0891) for markers spread on map
-      latitude = -1.9456 + (Math.random() - 0.5) * 0.04;
-      longitude = 30.0891 + (Math.random() - 0.5) * 0.04;
+      // Fallback: use school coordinates
+      latitude = -1.967308;
+      longitude = 30.227309;
     }
 
     // User doesn't supply weight/price anymore — admin will measure and set amount
