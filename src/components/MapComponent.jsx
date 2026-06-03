@@ -172,9 +172,9 @@ const MapComponent = () => {
     }
 
     if (!bounds.isEmpty) {
-      // include school so map doesn't recenter away from Kabuga
-      try { bounds.extend(SCHOOL_POS); } catch (e) {}
-      gmMap.current.fitBounds(bounds);
+      // Do not auto-fit bounds on load — keep default view centered on the school.
+      // This prevents schedule markers from recentering the map away from NuVision.
+      // If desired later, we can enable fitBounds through a user action.
     } else {
       // no schedule markers found — default to school
       gmMap.current.setCenter(SCHOOL_POS);
