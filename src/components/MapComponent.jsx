@@ -78,14 +78,14 @@ const MapComponent = () => {
   const initMap = () => {
     if (!mapRef.current || !window.google) return;
     gmMap.current = new window.google.maps.Map(mapRef.current, {
-      center: { lat: -1.9679684719159565, lng: 30.228077067239514 },
+      center: { lat: -1.967863143485511, lng: 30.22795411155306 },
       zoom: 17,
       ...(GOOGLE_MAP_ID ? { mapId: GOOGLE_MAP_ID } : {}),
     });
 
     // Add default marker for NuVision High School (Kabuga)
     try {
-      const schoolPosition = { lat: -1.9679684719159565, lng: 30.228077067239514 };
+      const schoolPosition = { lat: -1.967863143485511, lng: 30.22795411155306 };
       const schoolMarker = createMarkerElement(schoolPosition, 'NuVision High School (Kabuga)', '#2563eb');
       schoolMarkerRef.current = schoolMarker;
       // Ensure map stays centered on the school by default
@@ -101,7 +101,7 @@ const MapComponent = () => {
     // expose helper to center map exactly like the screenshot
     window.__centerOnNuVision = () => {
       try {
-        const pos = { lat: -1.9679684719159565, lng: 30.228077067239514 };
+        const pos = { lat: -1.967863143485511, lng: 30.22795411155306 };
         if (gmMap.current) {
           gmMap.current.setCenter(pos);
           gmMap.current.setZoom(17);
@@ -180,7 +180,7 @@ const MapComponent = () => {
     markersRef.current = [];
     const bounds = new window.google.maps.LatLngBounds();
     // Ensure NuVision High School (Kabuga) is included as a default anchor
-    const SCHOOL_POS = { lat: -1.967308, lng: 30.227309 };
+    const SCHOOL_POS = { lat: -1.967863143485511, lng: 30.22795411155306 };
 
     for (const sched of list) {
       if (!sched.address) continue;
